@@ -24,7 +24,7 @@ npm test
 npm run build
 ```
 
-บิลด์ Android ด้วย JDK 21 และ Android SDK Platform 35 กับ Build Tools 35.0.0 ตั้งค่า `JAVA_HOME` และ `ANDROID_HOME` ก่อนรัน
+บิลด์ Android ด้วย JDK 21 และ Android SDK Platform 35 และ Build Tools 34.0.0 (Gradle ติดตั้งเพิ่มได้หากยอมรับ SDK licenses แล้ว) ตั้งค่า `JAVA_HOME` และ `ANDROID_HOME` ก่อนรัน
 
 ```sh
 npm run android:sync
