@@ -14,7 +14,7 @@ export function Menu({ data }: { data: State }) {
     <div className="spread"><h1>จัดการเมนู</h1><button className="primary" disabled={busy} onClick={() => setEditing('new')}>+ เพิ่มเมนู</button></div>
     <p className="muted">รายการตัวอย่างจะขายได้เมื่อใส่ราคาและเอาเครื่องหมายรอยืนยันราคาออก</p>
     {editing && <MenuEditor key={editing} data={data} current={current}
-      variants={data.product_variants.filter(v => v.productId === editing)} close={() => setEditing(null)} />}
+      variants={data.product_variants.filter(v => v.productId === editing && !v.archived)} close={() => setEditing(null)} />}
     <div className="panel list">
       {data.products.filter(p => !p.archived).map(p => <div className="spread" key={p.id}>
         <div><strong>{p.name}</strong><br /><small>{[data.categories.find(c => c.id === p.categoryId)?.name,
@@ -181,7 +181,11 @@ export function Settings() {
     </div>
     <div className="panel list">
       <h2>นำเข้าเมนู</h2>
-      <a href="./sample-menu.json" download>ไฟล์นำเข้าเมนูตัวอย่าง</a>
+      <button disabled={busy} onClick={() => void task(async () => {
+        const response = await fetch('./sample-menu.json')
+        if (!response.ok) throw new Error('เปิดไฟล์ตัวอย่างไม่สำเร็จ')
+        return saveFile('sample-menu.json', 'application/json', await response.text())
+      })}>ดาวน์โหลดไฟล์นำเข้าเมนูตัวอย่าง</button>
       <label>ไฟล์เมนู JSON<input type="file" accept=".json,application/json" disabled={busy} onChange={async e => {
         const file = e.target.files?.[0]
         e.target.value = ''

@@ -10,7 +10,7 @@ export const product = z.object({
   ...row, name, categoryId: id, soldOut: z.boolean(), archived: z.boolean(),
   needsReview: z.boolean(), sample: z.boolean(),
 })
-export const variant = z.object({ ...row, productId: id, name, price: money.nullable() })
+export const variant = z.object({ ...row, productId: id, name, price: money.nullable(), archived: z.boolean().optional() })
 export const order = z.object({
   ...row, table: z.number().int().min(1).max(8), opened: instant,
   status: z.enum(['open', 'waiting', 'paid', 'cancelled']),
@@ -27,7 +27,7 @@ export const payment = z.object({
 export const printLine = z.object({ name, qty: z.number().int(), price: money, note: z.string().max(240) })
 export const ticket = z.object({
   kind: z.enum(['kitchen', 'accounting', 'test']), at: instant, orderId: id,
-  table: z.number().int().min(0).max(8), lines: z.array(printLine),
+  table: z.number().int().min(0).max(8), lines: z.array(printLine), message: z.string().max(200).optional(),
 })
 export const job = z.object({
   ...row, ticket, state: z.enum(['queued', 'sending', 'delivered', 'failed', 'uncertain']),

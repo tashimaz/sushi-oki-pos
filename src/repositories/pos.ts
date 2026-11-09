@@ -62,6 +62,7 @@ function validateBackup(s: State) {
   const require = (ok: boolean) => { if (!ok) throw new Error('ข้อมูลสำรองมีความสัมพันธ์หรือยอดเงินไม่ถูกต้อง') }
   for (const rows of Object.values(s)) require(new Set(rows.map(row => row.id)).size === rows.length)
   require(s.tables.length === 8 && s.tables.every(t => t.id === String(t.number)))
+  require(s.categories.length > 0)
   require(s.printer_settings.length === 1 && s.printer_settings[0].id === 'default')
   const orders = new Map(s.orders.map(o => [o.id, o]))
   const variants = new Set(s.product_variants.map(v => v.id))
@@ -107,6 +108,9 @@ export class Pos {
   private update<T>(action: (s: State) => T, replace?: State): Promise<{ state: State; result: T }> {
     const task = this.tail.then(async () => {
       const { state, revision } = await this.storage.read()
+      if (replace && state.print_jobs.some(job => job.state === 'sending')) {
+        throw new Error('รอให้งานพิมพ์ที่กำลังส่งเสร็จก่อนกู้คืน')
+      }
       const next = structuredClone(replace ?? state)
       const result = action(next)
       await this.storage.commit(revision, state, next, !!replace)
@@ -121,7 +125,7 @@ export class Pos {
       if (!s.tables.some(t => t.number === table)) throw new Error('ไม่พบโต๊ะ')
       const v = s.product_variants.find(v => v.id === variantId)
       const p = s.products.find(p => p.id === v?.productId)
-      if (!p || !v || v.price === null || p.needsReview || p.soldOut || p.archived) {
+      if (!p || !v || v.price === null || v.archived || p.needsReview || p.soldOut || p.archived) {
         throw new Error('เมนูนี้ยังไม่พร้อมขาย')
       }
       let o = orderAt(s, table)
@@ -162,7 +166,11 @@ export class Pos {
     return this.update(s => {
       const o = openOrder(s, id)
       if (!s.tables.some(t => t.number === destination) || orderAt(s, destination)) throw new Error('โต๊ะปลายทางไม่ว่าง')
-      log(s, id, 'moved', `โต๊ะ ${o.table} → โต๊ะ ${destination}`)
+      const message = `ย้ายโต๊ะ ${o.table} → โต๊ะ ${destination}`
+      if (itemsOf(s, id).some(i => i.sent > 0)) {
+        queue(s, { orderId: id, at: timestamp(), table: destination, kind: 'kitchen', lines: [], message })
+      }
+      log(s, id, 'moved', message)
       o.table = destination
     })
   }
@@ -225,7 +233,7 @@ export class Pos {
         else s.product_variants.push(v)
       }
       for (const v of s.product_variants.filter(v => v.productId === productId && !values.some(a => a.id === v.id))) {
-        v.price = null
+        v.archived = true
       }
       if (old) Object.assign(old, update)
       else s.products.push(update)
@@ -266,7 +274,7 @@ export class Pos {
   copy(id: string) {
     return this.update(s => {
       const job = s.print_jobs.find(j => j.id === id)
-      if (!job || job.state === 'sending') throw new Error('งานพิมพ์ยังไม่พร้อมทำสำเนา')
+      if (!job || (job.state !== 'delivered' && job.state !== 'uncertain')) throw new Error('งานพิมพ์ยังไม่พร้อมทำสำเนา')
       return queue(s, job.ticket, job.copyOf ?? id)
     })
   }
@@ -281,8 +289,9 @@ export class Pos {
   claim() {
     return this.update(s => {
       if (s.print_jobs.some(j => j.state === 'sending')) return
-      const job = s.print_jobs.find(j => j.state === 'queued')
-      if (job) job.state = 'sending'
+      const job = s.print_jobs.find(j => j.state === 'queued' || j.state === 'failed')
+      if (job?.state !== 'queued') return
+      job.state = 'sending'
       return job
     })
   }

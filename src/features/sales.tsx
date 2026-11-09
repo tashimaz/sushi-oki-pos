@@ -57,6 +57,10 @@ function OrderLine({ line, busy, onEdit }: {
         }} />
       <button disabled={busy || note === line.note} onClick={() => onEdit(line.qty, note)}>บันทึก</button>
     </div>}
+    {line.qty > 0 && <div className="chips" aria-label="ตัวเลือกหมายเหตุ">
+      {['ไม่ใส่วาซาบิ', 'ไม่ใส่ผัก', 'เพิ่มซอส'].map(option => <button key={option} disabled={busy || note.includes(option)}
+        onClick={() => onEdit(line.qty, [note, option].filter(Boolean).join(' · ').slice(0, 240))}>{option}</button>)}
+    </div>}
   </div>
 }
 
@@ -75,12 +79,15 @@ export function OrderPage({ data }: { data: State }) {
   const search = query.trim().normalize('NFC').toLocaleLowerCase('th')
   const menu = data.products.filter(p => !p.archived && (!category || p.categoryId === category) &&
     (p.name.normalize('NFC').toLocaleLowerCase('th').includes(search) ||
-      data.product_variants.some(v => v.productId === p.id && v.name.toLocaleLowerCase('th').includes(search))))
+      data.product_variants.some(v => v.productId === p.id && !v.archived && v.name.toLocaleLowerCase('th').includes(search))))
   return <>
     <Link className="back" to="/tables">‹ โต๊ะทั้งหมด</Link>
     <div className="spread"><h1>โต๊ะ {number}</h1><span className="pill">{o ? 'กำลังรับประทาน' : 'ว่าง'}</span></div>
+    {lines.length > 0 && <button className="order-jump" onClick={() => document.getElementById('order-summary')?.scrollIntoView()}>
+      ดูออเดอร์ · {baht(subtotalOf(lines))}
+    </button>}
     <div className="order-grid">
-      <section className="panel">
+      <section className="panel" id="food-menu">
         <h2>เลือกอาหาร</h2>
         <input type="search" aria-label="ค้นหาเมนู" placeholder="ค้นหาชื่ออาหาร" value={query} onChange={e => setQuery(e.target.value)} />
         <div className="chips">
@@ -91,15 +98,17 @@ export function OrderPage({ data }: { data: State }) {
         {menu.map(p => <div className="menu-line" key={p.id}>
           <strong>{p.name}</strong>
           {p.sample && <small className="pill">ตัวอย่าง</small>} {p.needsReview && <small className="pill">รอยืนยันราคา</small>} {p.soldOut && <small className="pill">หมด</small>}
-          <div className="actions">{data.product_variants.filter(v => v.productId === p.id && (v.price !== null || p.needsReview)).map(v =>
+          <div className="actions">{data.product_variants.filter(v => v.productId === p.id && !v.archived && (v.price !== null || p.needsReview)).map(v =>
             <button disabled={busy || p.soldOut || p.needsReview || v.price === null} key={v.id} onClick={() => void act(pos => pos.add(number, v.id))}>
               + {v.name} {v.price === null ? '· ยังไม่มีราคา' : baht(v.price)}
             </button>
           )}</div>
         </div>)}
       </section>
-      <section className="panel order-summary">
-        <h2>รายการที่สั่ง</h2>
+      <section className="panel order-summary" id="order-summary">
+        <div className="spread"><h2>รายการที่สั่ง</h2>
+          <button className="order-jump" onClick={() => document.getElementById('food-menu')?.scrollIntoView()}>กลับไปเลือกอาหาร</button>
+        </div>
         {!lines.length && <p className="muted">แตะเมนูเพื่อเริ่มออเดอร์ ระบบบันทึกทุกครั้งที่แก้ไข</p>}
         {o && lines.map(line => <OrderLine key={line.id + line.note} line={line} busy={busy} onEdit={(qty, note) =>
           void act(pos => pos.edit(o.id, line.id, qty, note))} />)}
@@ -117,7 +126,10 @@ export function OrderPage({ data }: { data: State }) {
               {data.tables.filter(t => !orderAt(data, t.number)).map(t => <option key={t.id} value={t.number}>โต๊ะ {t.number}</option>)}
             </select>
             <button disabled={busy || !destination} onClick={async () => {
-              if (await act(pos => pos.move(o.id, Number(destination)), 'ย้ายโต๊ะแล้ว')) navigate(`/tables/${destination}`)
+              if (await act(pos => pos.move(o.id, Number(destination)), 'ย้ายโต๊ะแล้ว')) {
+                void drain()
+                navigate(`/tables/${destination}`)
+              }
             }}>ย้ายโต๊ะ</button>
           </div>
           <button className="danger" disabled={busy} onClick={async () => {

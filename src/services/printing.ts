@@ -27,6 +27,7 @@ export function ticketText(job: Job): string[] {
     { kitchen: 'ใบครัว', accounting: 'ใบบัญชี · ยอดก่อนส่วนลด', test: 'ทดสอบเครื่องพิมพ์' }[t.kind],
     ...(t.table ? [`โต๊ะ ${t.table}`] : []),
     `ออเดอร์ ${t.orderId}`, bangkokTime(t.at), '────────────────────',
+    ...(t.message ? [t.message] : []),
     ...t.lines.flatMap(i => [
       `${i.qty < 0 ? 'ยกเลิก ' : ''}${Math.abs(i.qty)} × ${i.name}`,
       ...(account ? [`  ${baht(i.price)} / หน่วย · ${baht(i.price * i.qty)}`] : []),
