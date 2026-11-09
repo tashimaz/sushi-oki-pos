@@ -85,6 +85,8 @@ public class PosHardware extends Plugin {
                     .put("address", d.getAddress()));
             }
             call.resolve(new JSObject().put("devices", devices));
+        } catch (SecurityException error) {
+            call.reject("อนุญาตอุปกรณ์ใกล้เคียงในการตั้งค่า Android", "NOT_SENT", error);
         } catch (Exception error) {
             call.reject("อ่านอุปกรณ์ที่จับคู่ไม่ได้ ตรวจสอบ Bluetooth", "NOT_SENT", error);
         }
@@ -126,6 +128,9 @@ public class PosHardware extends Plugin {
                     }
                 }
                 call.resolve();
+            } catch (SecurityException error) {
+                call.reject("สิทธิ์ Bluetooth เปลี่ยนไป ตรวจใบพิมพ์และสิทธิ์อุปกรณ์ใกล้เคียง",
+                    startedWriting ? "UNCERTAIN" : "NOT_SENT", error);
             } catch (Exception error) {
                 String message = startedWriting ? "การส่งอาจไม่ครบ ตรวจใบพิมพ์ก่อนทำสำเนา" :
                     "เชื่อมต่อไม่สำเร็จ ตรวจเครื่องพิมพ์และ Bluetooth";

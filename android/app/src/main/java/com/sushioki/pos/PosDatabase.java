@@ -1,6 +1,5 @@
 package com.sushioki.pos;
 
-import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
@@ -10,6 +9,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
 import java.util.Iterator;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,8 +20,16 @@ public class PosDatabase extends Plugin {
 
     private SQLiteDatabase db() {
         if (database == null) {
-            database = getContext().openOrCreateDatabase("sushi-oki.db", Context.MODE_PRIVATE, null);
-            database.enableWriteAheadLogging();
+            File file = getContext().getDatabasePath("sushi-oki.db");
+            File directory = file.getParentFile();
+            if (directory == null || (!directory.isDirectory() && !directory.mkdirs())) {
+                throw new IllegalStateException("Could not create database directory");
+            }
+            SQLiteDatabase.OpenParams options = new SQLiteDatabase.OpenParams.Builder()
+                .addOpenFlags(SQLiteDatabase.CREATE_IF_NECESSARY | SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING)
+                .setSynchronousMode(SQLiteDatabase.SYNC_MODE_FULL)
+                .build();
+            database = SQLiteDatabase.openDatabase(file, options);
         }
         return database;
     }
