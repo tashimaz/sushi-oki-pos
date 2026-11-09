@@ -1,0 +1,16 @@
+{
+  "format": "sushi-oki-menu",
+  "version": 1,
+  "products": [
+    {
+      "category": "Sashimi",
+      "name": "ซาชิมิปลา (ตัวอย่างนำเข้า)",
+      "sample": true,
+      "needsReview": true,
+      "variants": [
+        { "name": "6 ชิ้น", "price": null },
+        { "name": "12 ชิ้น", "price": null }
+      ]
+    }
+  ]
+}
